@@ -1,0 +1,161 @@
+#!/usr/bin/python3
+
+# weather - weather information from the command line
+# Copyright (C) 2023  Marcus Huber (xenorio) <dev@xenorio.xyz>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import os
+import argparse
+import requests
+from pathlib import Path
+from time import sleep
+
+# you can freely edit these. see https://openweathermap.org/weather-conditions for reference.
+# uses FontAwesome glyphs by default
+icons = {
+    "11d": "",
+    "09d": "",
+    "10d": "",
+    "13d": "",
+    "50d": "",
+    "01d": "",
+    "01n": "",
+    "02d": "",
+    "02n": "",
+    "03d": "",
+    "03n": "",
+    "04d": "",
+    "04n": ""
+}
+
+# set up argument parser for maximum user-friendliness
+parser = argparse.ArgumentParser(
+    prog='weather',
+    description='weather information from the command line',
+    formatter_class=argparse.RawTextHelpFormatter,
+    epilog="""
+format options:
+    %C      -   city
+    %T      -   temperature
+    %Tmin   -   minimum temperature
+    %Tmax   -   maximum temperature
+    %t      -   felt temperature
+    %W      -   weather type
+    %D      -   weather description
+    %I      -   weather icon (FontAwesome glyph)
+    %H      -   humidity (%)
+    %P      -   air pressure
+    %V      -   visibility
+
+example:
+    weather '%D - %T°C' -c London,GB -k 12345
+    overcast clouds - 11°C
+
+note:
+    every time you use the --key parameter, the key is saved to ~/.config/weather/keyfile and does not need to be passed again in the future
+    """)
+
+parser.add_argument('format',
+                    help="output format for the weather data")
+parser.add_argument('-k', '--key',
+                    help="OpenWeatherMap API key")
+parser.add_argument('-q', '--query',
+                    required=True,
+                    help="query for city. example: London,GB")
+parser.add_argument('-u', '--units',
+                    help="metric or imperial | defaults to metric")
+parser.add_argument('-w', '--watch',
+                    help="watch mode")
+
+args = parser.parse_args()
+
+# saving and reading API key
+keyfile = Path(os.environ.get("HOME") + "/.config/weather/keyfile")
+keyfile.parent.mkdir(parents=True, exist_ok=True)
+
+if args.key != None:
+    keyfile.write_text(args.key, "UTF-8")
+    key = args.key
+else:
+    try:
+        key = keyfile.read_text("UTF-8")
+    except:
+        print("could not load keyfile from ~/.config/weather/keyfile | please provide a key using --key")
+        quit()
+
+if args.units in ["metric", "imperial"]:
+    units = args.units
+else:
+    units = "metric"
+
+# query latitude and longitude for selected location
+res = requests.get("http://api.openweathermap.org/geo/1.0/direct?q=" +
+                   args.query + "&limit=1&appid=" + key).json()
+
+# error handling
+if type(res) == "object" and res['cod'] and res['cod'] != 200:
+    print("API Error: " + res['message'])
+    quit()
+
+# location was not found
+if len(res) < 1:
+    print("invalid query")
+    quit()
+
+lat = res[0]['lat']
+lon = res[0]['lon']
+
+def query():
+    # query weather data for location using provided lat&lon
+    res = requests.get("https://api.openweathermap.org/data/2.5/weather?lat=" +
+                    str(lat) + "&lon=" + str(lon) + "&units=" + units + "&appid=" + key).json()
+
+    # error handling 2: electric boogaloo
+    if type(res) == "dict" and res['cod'] and res['cod'] != 200:
+        print("API Error: " + res['message'])
+        quit()
+
+    # replace variables in format, then print the resulting string
+    # note that %Tmin and %Tmax need to be parsed BEFORE %T, since they start with %T 
+    print(args.format
+        .replace("%C", res['name'])
+        .replace("%W", res['weather'][0]['main'])
+        .replace("%D", res['weather'][0]['description'])
+        .replace("%I", icons[res['weather'][0]['icon']])
+        .replace("%Tmin", str(round(res['main']['temp_min'])))
+        .replace("%Tmax", str(round(res['main']['temp_max'])))
+        .replace("%T", str(round(res['main']['temp'])))
+        .replace("%t", str(round(res['main']['feels_like'])))
+        .replace("%H", str(round(res['main']['humidity'])))
+        .replace("%P", str(round(res['main']['pressure'])))
+        .replace("%V", str(round(res['visibility'])))
+        )
+
+# validate watch mode
+watch = None
+if args.watch != None:
+    try:
+        watch = int(args.watch)
+    except:
+        print("invalid value for watch mode - please provide amount of seconds")
+        quit()
+
+# start output
+while True:
+    query()
+    if watch != None:
+        sleep(watch)
+    else:
+        quit()
