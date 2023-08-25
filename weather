@@ -29,61 +29,61 @@ icons = {
 	"02d": "",	# few clouds, day
 	"03d": "",	# scattered clouds, day
 	"04d": "",	# broken clouds, day
-	"09d": "",	 # shower rain, day   
-	"10d": "",	 # rain, day
-    "11d": "",	 # thunderstorm, day
-    "13d": "",	# snow, day 
-    "50d": "",	 # mist, day  
-    
-    "01n": "",	# clear sky, night
-    "02n": "",	# few clouds, night
+	"09d": "",	# shower rain, day   
+	"10d": "",	# rain, day
+	"11d": "",	# thunderstorm, day
+	"13d": "",	# snow, day 
+	"50d": "",	# mist, day  
+	
+	"01n": "",	# clear sky, night
+	"02n": "",	# few clouds, night
 	"03n": "",	# scattered clouds, night
 	"04n": "",	# broken clouds, night
-	"09n": "",	 # shower rain, night
-	"10n": "",	 # rain, night
-    "11n": "",	 # thunderstorm, night
-    "13n": "",	# snow, night
-    "50n": "",	 # mist, night
+	"09n": "",	# shower rain, night
+	"10n": "",	# rain, night
+	"11n": "",	# thunderstorm, night
+	"13n": "",	# snow, night
+	"50n": "",	# mist, night
 }
 
 # set up argument parser for maximum user-friendliness
 parser = argparse.ArgumentParser(
-    prog='weather',
-    description='weather information from the command line',
-    formatter_class=argparse.RawTextHelpFormatter,
-    epilog="""
+	prog='weather',
+	description='weather information from the command line',
+	formatter_class=argparse.RawTextHelpFormatter,
+	epilog="""
 format options:
-    %C      -   city
-    %T      -   temperature
-    %Tmin   -   minimum temperature
-    %Tmax   -   maximum temperature
-    %t      -   felt temperature
-    %W      -   weather type
-    %D      -   weather description
-    %I      -   weather icon (FontAwesome glyph)
-    %H      -   humidity (%)
-    %P      -   air pressure
-    %V      -   visibility
+	%C      -   city
+	%T      -   temperature
+	%Tmin   -   minimum temperature
+	%Tmax   -   maximum temperature
+	%t      -   felt temperature
+	%W      -   weather type
+	%D      -   weather description
+	%I      -   weather icon (FontAwesome glyph)
+	%H      -   humidity (%)
+	%P      -   air pressure
+	%V      -   visibility
 
 example:
-    weather '%D - %T°C' -c London,GB -k 12345
-    overcast clouds - 11°C
+	weather '%D - %T°C' -c London,GB -k 12345
+	overcast clouds - 11°C
 
 note:
-    every time you use the --key parameter, the key is saved to ~/.config/weather/keyfile and does not need to be passed again in the future
-    """)
+	every time you use the --key parameter, the key is saved to ~/.config/weather/keyfile and does not need to be passed again in the future
+	""")
 
 parser.add_argument('format',
-                    help="output format for the weather data")
+					help="output format for the weather data")
 parser.add_argument('-k', '--key',
-                    help="OpenWeatherMap API key")
+					help="OpenWeatherMap API key")
 parser.add_argument('-q', '--query',
-                    required=True,
-                    help="query for city. example: London,GB")
+					required=True,
+					help="query for city. example: London,GB")
 parser.add_argument('-u', '--units',
-                    help="metric or imperial | defaults to metric")
+					help="metric or imperial | defaults to metric")
 parser.add_argument('-w', '--watch',
-                    help="watch mode")
+					help="watch mode")
 
 args = parser.parse_args()
 
@@ -92,76 +92,76 @@ keyfile = Path(os.environ.get("HOME") + "/.config/weather/keyfile")
 keyfile.parent.mkdir(parents=True, exist_ok=True)
 
 if args.key != None:
-    keyfile.write_text(args.key, "UTF-8")
-    key = args.key
+	keyfile.write_text(args.key, "UTF-8")
+	key = args.key
 else:
-    try:
-        key = keyfile.read_text("UTF-8")
-    except:
-        print("could not load keyfile from ~/.config/weather/keyfile | please provide a key using --key")
-        quit()
+	try:
+		key = keyfile.read_text("UTF-8")
+	except:
+		print("could not load keyfile from ~/.config/weather/keyfile | please provide a key using --key")
+		quit()
 
 if args.units in ["metric", "imperial"]:
-    units = args.units
+	units = args.units
 else:
-    units = "metric"
+	units = "metric"
 
 # query latitude and longitude for selected location
 res = requests.get("http://api.openweathermap.org/geo/1.0/direct?q=" +
-                   args.query + "&limit=1&appid=" + key).json()
+				   args.query + "&limit=1&appid=" + key).json()
 
 # error handling
 if type(res) == "object" and res['cod'] and res['cod'] != 200:
-    print("API Error: " + res['message'])
-    quit()
+	print("API Error: " + res['message'])
+	quit()
 
 # location was not found
 if len(res) < 1:
-    print("invalid query")
-    quit()
+	print("invalid query")
+	quit()
 
 lat = res[0]['lat']
 lon = res[0]['lon']
 
 def query():
-    # query weather data for location using provided lat&lon
-    res = requests.get("https://api.openweathermap.org/data/2.5/weather?lat=" +
-                    str(lat) + "&lon=" + str(lon) + "&units=" + units + "&appid=" + key).json()
+	# query weather data for location using provided lat&lon
+	res = requests.get("https://api.openweathermap.org/data/2.5/weather?lat=" +
+					str(lat) + "&lon=" + str(lon) + "&units=" + units + "&appid=" + key).json()
 
-    # error handling 2: electric boogaloo
-    if type(res) == "dict" and res['cod'] and res['cod'] != 200:
-        print("API Error: " + res['message'])
-        quit()
+	# error handling 2: electric boogaloo
+	if type(res) == "dict" and res['cod'] and res['cod'] != 200:
+		print("API Error: " + res['message'])
+		quit()
 
-    # replace variables in format, then print the resulting string
-    # note that %Tmin and %Tmax need to be parsed BEFORE %T, since they start with %T 
-    print(args.format
-        .replace("%C", res['name'])
-        .replace("%W", res['weather'][0]['main'])
-        .replace("%D", res['weather'][0]['description'])
-        .replace("%I", icons[res['weather'][0]['icon']])
-        .replace("%Tmin", str(round(res['main']['temp_min'])))
-        .replace("%Tmax", str(round(res['main']['temp_max'])))
-        .replace("%T", str(round(res['main']['temp'])))
-        .replace("%t", str(round(res['main']['feels_like'])))
-        .replace("%H", str(round(res['main']['humidity'])))
-        .replace("%P", str(round(res['main']['pressure'])))
-        .replace("%V", str(round(res['visibility'])))
-        )
+	# replace variables in format, then print the resulting string
+	# note that %Tmin and %Tmax need to be parsed BEFORE %T, since they start with %T 
+	print(args.format
+		.replace("%C", res['name'])
+		.replace("%W", res['weather'][0]['main'])
+		.replace("%D", res['weather'][0]['description'])
+		.replace("%I", icons[res['weather'][0]['icon']])
+		.replace("%Tmin", str(round(res['main']['temp_min'])))
+		.replace("%Tmax", str(round(res['main']['temp_max'])))
+		.replace("%T", str(round(res['main']['temp'])))
+		.replace("%t", str(round(res['main']['feels_like'])))
+		.replace("%H", str(round(res['main']['humidity'])))
+		.replace("%P", str(round(res['main']['pressure'])))
+		.replace("%V", str(round(res['visibility'])))
+		)
 
 # validate watch mode
 watch = None
 if args.watch != None:
-    try:
-        watch = int(args.watch)
-    except:
-        print("invalid value for watch mode - please provide amount of seconds")
-        quit()
+	try:
+		watch = int(args.watch)
+	except:
+		print("invalid value for watch mode - please provide amount of seconds")
+		quit()
 
 # start output
 while True:
-    query()
-    if watch != None:
-        sleep(watch)
-    else:
-        quit()
+	query()
+	if watch != None:
+		sleep(watch)
+	else:
+		quit()
