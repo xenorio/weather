@@ -66,7 +66,7 @@ format options:
 	%V      -   visibility
 
 example:
-	weather '%D - %T°C' -c London,GB -k 12345
+	weather '%D - %T°C' -q London,GB -k 12345
 	overcast clouds - 11°C
 
 note:
