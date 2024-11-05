@@ -107,7 +107,7 @@ else:
 	units = "metric"
 
 # query latitude and longitude for selected location
-res = requests.get("http://api.openweathermap.org/geo/1.0/direct?q=" +
+res = requests.get("https://api.openweathermap.org/geo/1.0/direct?q=" +
 				   args.query + "&limit=1&appid=" + key).json()
 
 # error handling
